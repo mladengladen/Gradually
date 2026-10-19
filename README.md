@@ -40,10 +40,10 @@ It's a single HTML file with no build step, no dependencies and no server. Open 
 
 ## Getting started
 
-Clone or download the repository, then open `gradually.html` in a recent version of Chrome, Safari, Edge or Firefox:
+Clone or download the repository, then open `index.html` in a recent version of Chrome, Safari, Edge or Firefox:
 
 ```bash
-open gradually.html
+open index.html
 ```
 
 Exports go to your browser's downloads folder. Your colors and settings are saved in the browser's `localStorage`, so the app opens where you left off.
@@ -54,7 +54,7 @@ The fonts (Bricolage Grotesque, Instrument Sans and JetBrains Mono) load from Go
 
 1. Push the repository to GitHub.
 2. Go to **Settings → Pages** and choose to deploy from your default branch.
-3. The app is then served at `https://mladengladen.github.io/gradually/gradually.html`.
+3. The app is then served at `https://mladengladen.github.io/gradually/`.
 
 ## How it works
 
@@ -67,7 +67,7 @@ The fonts (Bricolage Grotesque, Instrument Sans and JetBrains Mono) load from Go
 ## Project structure
 
 ```
-gradually.html   The whole app: markup, styles, shader and script
+index.html       The whole app: markup, styles, shader and script
 README.md
 ```
 
