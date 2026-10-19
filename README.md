@@ -1,4 +1,4 @@
-# Gradually
+# Gradually - Gradient generator
 
 A browser-based gradient generator. Pick two or more colors and Gradually renders dozens of modern gradient variations from them, then exports any one as a high-resolution image or a seamless Instagram carousel.
 
