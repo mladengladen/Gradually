@@ -1,0 +1,1179 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gradually</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a palette rail on the left, a grid of rendered variations on the right that swaps to a one-up editor */
+:root{
+  --bg:#f2f1ee; --panel:#fbfaf8; --line:#dcd9d2; --fg:#1c1b19; --muted:#6c6861;
+  --ink:#1c1b19; --on-ink:#fbfaf8; --hover:#e8e6e1; --focus:#3b63f0; --stage:#e6e4df;
+  --display:"Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --body:"Instrument Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131312; --panel:#1a1a18; --line:#2d2c29; --fg:#ebe9e4; --muted:#9a968e;
+    --ink:#ebe9e4; --on-ink:#131312; --hover:#252420; --focus:#7f9cff; --stage:#0d0d0c; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131312; --panel:#1a1a18; --line:#2d2c29; --fg:#ebe9e4; --muted:#9a968e;
+  --ink:#ebe9e4; --on-ink:#131312; --hover:#252420; --focus:#7f9cff; --stage:#0d0d0c; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.45;padding-inline:16px;padding-block:0 32px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:16px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand-mark{width:28px;height:28px;border-radius:8px;background:var(--brand,linear-gradient(135deg,#ff7a59,#7b2ff7))}
+.brand h1{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0}
+.brand small{color:var(--muted);font-size:13px}
+
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--panel);gap:2px}
+.seg button{border:0;background:transparent;padding:5px 12px;border-radius:999px;cursor:pointer;font-size:13px;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
+.seg button:not([aria-pressed="true"]):hover{background:var(--hover);color:var(--fg)}
+.btn{border:1px solid var(--line);background:var(--panel);padding:7px 14px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.btn.primary:hover{opacity:.9}
+.btn[disabled]{opacity:.55;cursor:progress}
+
+.app{display:grid;grid-template-columns:292px minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}}
+
+.rail{position:sticky;top:env(safe-area-inset-top,0px);max-height:100vh;overflow:auto;display:flex;flex-direction:column;gap:24px;padding-bottom:12px}
+@media (max-width:860px){.rail{position:static;max-height:none}}
+.rail h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 10px}
+.rail .hint{color:var(--muted);font-size:12.5px;margin:-4px 0 10px}
+
+.colors{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.crow{display:grid;grid-template-columns:34px minmax(0,1fr) auto 28px;gap:8px;align-items:center}
+.bg-btn{font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;border:1px solid var(--line);background:transparent;border-radius:6px;padding:5px 7px;cursor:pointer;color:var(--muted)}
+.bg-btn:hover{color:var(--fg);border-color:var(--muted)}
+.bg-btn[aria-pressed="true"]{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.seg-sm button{padding:5px 10px;font-size:12.5px}
+.expand-note{margin:10px 0 0}
+.rendered{display:flex;gap:4px;margin-top:8px;align-items:center}
+.rendered i{flex:1;height:18px;border-radius:4px;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)}
+.rendered i.added{height:12px}
+.cchip{position:relative;width:34px;height:34px;border-radius:8px;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);cursor:pointer;overflow:hidden}
+.cchip input{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);opacity:0;cursor:pointer;border:0;padding:0}
+.hex{font-family:var(--mono);font-size:13px;text-transform:uppercase;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 10px;width:100%;min-width:0}
+.hex[aria-invalid="true"]{border-color:#d4453b}
+.icon-btn{width:28px;height:28px;border:0;background:transparent;border-radius:8px;cursor:pointer;color:var(--muted);font-size:18px;line-height:1}
+.icon-btn:hover{background:var(--hover);color:var(--fg)}
+.icon-btn[disabled]{opacity:.3;cursor:default;background:transparent}
+.crow-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+
+.ideas{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.idea{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:6px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:6px}
+.idea:hover{border-color:var(--muted)}
+.idea i{display:block;height:30px;border-radius:6px;background:var(--g)}
+.idea span{font-size:12px;color:var(--muted);padding-inline:2px}
+
+.main{min-width:0}
+.main-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.main-head h2{font-family:var(--display);font-weight:500;font-size:20px;margin:0;letter-spacing:-.01em}
+.main-head p{margin:0;color:var(--muted);font-size:13px}
+
+.grid{display:flex;flex-direction:column;gap:30px}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.sec-head h3{font-family:var(--display);font-weight:500;font-size:16px;margin:0;letter-spacing:-.005em}
+.sec-head .btn{padding:4px 11px;font-size:12px}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:700px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{border:0;padding:0;background:transparent;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:7px}
+.card canvas{display:block;width:100%;height:auto;border-radius:var(--r);box-shadow:0 0 0 1px rgba(0,0,0,.06);transition:transform .18s ease, box-shadow .18s ease}
+.card:hover canvas{transform:translateY(-2px);box-shadow:0 10px 24px -12px rgba(0,0,0,.45)}
+.card-meta{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding-inline:2px}
+.card-meta b{font-weight:500}
+.tag{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+
+.editor{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:24px;align-items:start}
+@media (max-width:1100px){.editor{grid-template-columns:minmax(0,1fr)}}
+.stage{background:var(--stage);border-radius:14px;padding:clamp(12px,3vw,28px);display:grid;place-items:center;min-height:240px}
+.stage canvas{display:block;max-width:100%;max-height:min(74vh,880px);width:auto;height:auto;border-radius:6px;box-shadow:0 20px 50px -25px rgba(0,0,0,.6)}
+.controls{display:flex;flex-direction:column;gap:18px}
+.group{display:flex;flex-direction:column;gap:8px}
+.group > label, .group > .lbl{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+select{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;width:100%}
+.slider{display:grid;grid-template-columns:72px minmax(0,1fr) 42px;align-items:center;gap:10px;font-size:13px}
+.slider output{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.slider.off{opacity:.35}
+input[type=range]{width:100%;accent-color:var(--ink)}
+.export-box{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:14px}
+.dims{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.export-btn{justify-content:center;padding:11px 16px;font-size:14px}
+.back{margin-bottom:14px}
+.slides-pick{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.slides-pick select{width:auto;padding:6px 8px;border-radius:999px}
+.cards.wide{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:700px){.cards.wide{grid-template-columns:minmax(0,1fr)}}
+.tc-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.tc-sample{font-family:var(--display);font-weight:700;font-size:18px;padding:4px 10px;border-radius:8px;background:var(--tc-bg,#111);color:var(--tc-fg,#fff)}
+.tc-result{font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.tc-result b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.pill.ok{background:#1f7a4a;color:#fff}.pill.mid{background:#a8741a;color:#fff}.pill.low{background:#b23b35;color:#fff}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--on-ink);padding:9px 16px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.2s ease;max-width:calc(100vw - 32px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.err{padding:20px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="brand">
+    <div class="brand-mark" id="brandMark"></div>
+    <h1>Gradually</h1>
+    <small>gradient generator</small>
+  </div>
+  <div class="seg" role="group" aria-label="Aspect ratio" id="aspectSeg">
+    <button type="button" data-v="16:9">16:9</button>
+    <button type="button" data-v="9:16">9:16</button>
+    <button type="button" data-v="4:5">4:5 Instagram</button>
+    <button type="button" data-v="1:1">1:1</button>
+  </div>
+  <label class="slides-pick" for="slidesSel">Carousel
+    <select id="slidesSel" class="slides-sel"></select>
+  </label>
+  <button class="btn" type="button" id="shuffleAll">↻ New variations</button>
+</header>
+
+<div class="app">
+  <aside class="rail">
+    <section>
+      <h2>Your colors</h2>
+      <p class="hint">2 to 6 colors. Click a swatch or type a hex code. Mark one as <b>BG</b> to make it the background color.</p>
+      <ul class="colors" id="colorList"></ul>
+      <div class="crow-actions">
+        <button class="btn" type="button" id="addColor">+ Add color</button>
+        <button class="btn" type="button" id="reverseColors">⇅ Reverse</button>
+        <button class="btn" type="button" id="randomPalette">Surprise me</button>
+      </div>
+    </section>
+    <section>
+      <h2>Extra colors</h2>
+      <p class="hint">Builds more colors from yours, so even 2 colors blend into a rich gradient.</p>
+      <div class="seg seg-sm" role="group" aria-label="Extra colors" id="expandSeg">
+        <button type="button" data-v="off">Off</button>
+        <button type="button" data-v="tones">Shades</button>
+        <button type="button" data-v="analogous">Neighbors</button>
+        <button type="button" data-v="vivid">Vivid</button>
+      </div>
+      <p class="hint expand-note" id="expandNote"></p>
+      <div class="rendered" id="renderedStrip" aria-hidden="true"></div>
+      <div class="crow-actions"><button class="btn" type="button" id="remix">↻ Another mix</button></div>
+    </section>
+    <section>
+      <h2>Ideas from your first color</h2>
+      <div class="ideas" id="ideas"></div>
+    </section>
+    <section>
+      <h2>Curated palettes</h2>
+      <div class="ideas" id="presets"></div>
+    </section>
+  </aside>
+
+  <main class="main">
+    <div id="gridView">
+      <div class="main-head">
+        <h2 id="gridTitle">Variations</h2>
+        <p>Click one to fine-tune and export.</p>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div id="editView" hidden>
+      <button class="btn back" type="button" id="backBtn">← All variations</button>
+      <div class="editor">
+        <div class="stage"><canvas id="preview" aria-label="Gradient preview"></canvas></div>
+        <div class="controls">
+          <div class="group">
+            <label for="styleSel">Style</label>
+            <select id="styleSel"></select>
+          </div>
+          <div class="group" id="sliders">
+            <div class="lbl">Shape</div>
+          </div>
+          <button class="btn" type="button" id="reseed">↻ New shape, same settings</button>
+          <div class="group text-check">
+            <label for="textSel">Text check</label>
+            <div class="tc-row">
+              <select id="textSel"></select>
+              <span class="tc-sample" id="tcSample">Aa</span>
+            </div>
+            <div class="tc-result" id="tcResult"></div>
+          </div>
+          <div class="export-box">
+            <div class="group">
+              <div class="lbl">Format</div>
+              <div class="seg" role="group" aria-label="Aspect ratio" id="aspectSeg2">
+                <button type="button" data-v="16:9">16:9</button>
+                <button type="button" data-v="9:16">9:16</button>
+                <button type="button" data-v="4:5">4:5</button>
+                <button type="button" data-v="1:1">1:1</button>
+              </div>
+            </div>
+            <div class="group">
+              <label for="slidesSel2">Carousel slides</label>
+              <select id="slidesSel2" class="slides-sel"></select>
+            </div>
+            <div class="group">
+              <div class="lbl">Resolution</div>
+              <div class="seg" role="group" aria-label="Resolution" id="resSeg">
+                <button type="button" data-v="1080">1080p</button>
+                <button type="button" data-v="2k">2K</button>
+                <button type="button" data-v="4k">4K</button>
+              </div>
+            </div>
+            <div class="group">
+              <div class="lbl">File type</div>
+              <div class="seg" role="group" aria-label="File type" id="typeSeg">
+                <button type="button" data-v="png">PNG · lossless</button>
+                <button type="button" data-v="jpg">JPG · smaller</button>
+              </div>
+            </div>
+            <button class="btn primary export-btn" type="button" id="exportBtn">Export</button>
+            <div class="dims" id="dimsNote"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------- color math (Oklab) ---------- */
+const clamp01 = v => Math.min(1, Math.max(0, v));
+const toLin = c => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+const fromLin = c => c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
+function normHex(h){
+  h = String(h).trim().replace(/^#/, "");
+  if (/^[0-9a-f]{3}$/i.test(h)) h = h.split("").map(c => c + c).join("");
+  return /^[0-9a-f]{6}$/i.test(h) ? "#" + h.toLowerCase() : null;
+}
+function hexToRgb(h){ const n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; }
+function rgbToHex(rgb){ return "#" + rgb.map(v => Math.round(clamp01(v) * 255).toString(16).padStart(2, "0")).join(""); }
+function rgbToOklab(rgb){
+  const [r, g, b] = rgb.map(toLin);
+  const l = Math.cbrt(0.4122214708*r + 0.5363325363*g + 0.0514459929*b);
+  const m = Math.cbrt(0.2119034982*r + 0.6806995451*g + 0.1073969566*b);
+  const s = Math.cbrt(0.0883024619*r + 0.2817188376*g + 0.6299787005*b);
+  return [0.2104542553*l + 0.7936177850*m - 0.0040720468*s,
+          1.9779984951*l - 2.4285922050*m + 0.4505937099*s,
+          0.0259040371*l + 0.7827717662*m - 0.8086757660*s];
+}
+function oklabToLin([L, a, b]){
+  const l = (L + 0.3963377774*a + 0.2158037573*b) ** 3;
+  const m = (L - 0.1055613458*a - 0.0638541728*b) ** 3;
+  const s = (L - 0.0894841775*a - 1.2914855480*b) ** 3;
+  return [4.0767416621*l - 3.3077115913*m + 0.2309699292*s,
+         -1.2684380046*l + 2.6097574011*m - 0.3413193965*s,
+         -0.0041960863*l - 0.7034186147*m + 1.7076147010*s];
+}
+function oklchToHex(L, C, h){
+  for (let i = 0; i < 40; i++){
+    const rad = h * Math.PI / 180;
+    const lin = oklabToLin([L, C * Math.cos(rad), C * Math.sin(rad)]);
+    if (lin.every(v => v >= -0.0005 && v <= 1.0005)) return rgbToHex(lin.map(v => fromLin(clamp01(v))));
+    C *= 0.9;
+  }
+  return rgbToHex(oklabToLin([L, 0, 0]).map(v => fromLin(clamp01(v))));
+}
+function hexToOklch(hex){
+  const [L, a, b] = rgbToOklab(hexToRgb(hex));
+  return [L, Math.hypot(a, b), (Math.atan2(b, a) * 180 / Math.PI + 360) % 360];
+}
+
+/* ---------- palettes ---------- */
+const PRESETS = [
+  {name:"Afterglow", colors:["#ff7a59","#ff3d7f","#7b2ff7","#1b1464"]},
+  {name:"Lagoon",    colors:["#9be15d","#00c2a8","#0077ff","#0b1d51"]},
+  {name:"Peach",     colors:["#f6d6c4","#ffbe98","#ff8a65","#c06c84"]},
+  {name:"Nordic",    colors:["#e6f0ff","#8fb8de","#3a5a80","#1a2433"]},
+  {name:"Acid bloom",colors:["#d4ff3a","#2bff88","#00a3ff","#2a0a4a"]},
+  {name:"Velvet",    colors:["#2d0b3a","#7a1f5c","#e0457b","#ffb3a7"]},
+  {name:"Citrus",    colors:["#ffe156","#ff9f1c","#ff4f4f","#2ec4b6"]},
+  {name:"Glacier",   colors:["#f0f7ff","#a8e6ff","#5b8cff","#3c2a8c"]},
+  {name:"Ember",     colors:["#120c0c","#5c1a0e","#e2531c","#ffc15e"]},
+  {name:"Orchid",    colors:["#f9c5ff","#c084fc","#6d28d9","#1e1b4b"]},
+];
+function ideasFrom(base){
+  const [, C0, h] = hexToOklch(base);
+  const C = Math.max(C0, 0.09);
+  const H = d => (h + d + 360) % 360;
+  const k = (l, c, d) => oklchToHex(l, c, H(d));
+  return [
+    {name:"Analogous",  colors:[k(.6,C,-35), base, k(.82,C*.85,35)]},
+    {name:"Complement", colors:[k(.32,C*.8,180), base, k(.92,C*.45,20)]},
+    {name:"Triad",      colors:[base, k(.7,C,120), k(.58,C,240)]},
+    {name:"Split",      colors:[base, k(.55,C,150), k(.76,C*.8,210)]},
+    {name:"Tonal",      colors:[k(.26,C*.7,0), k(.5,C,0), k(.72,C,8), k(.93,C*.35,15)]},
+    {name:"Dusk",       colors:[k(.2,C*.6,-90), k(.48,C,-40), base, k(.88,C*.7,40)]},
+    {name:"Pastel",     colors:[k(.91,.07,0), k(.88,.08,60), k(.86,.08,140), k(.9,.06,220)]},
+    {name:"Neon night", colors:[k(.17,.06,200), k(.65,.25,0), k(.86,.19,60)]},
+  ];
+}
+
+/* ---------- styles ---------- */
+const STYLES = [
+  {id:"mesh",   name:"Mesh",         uses:["warp","soft","scale"]},
+  {id:"linear", name:"Linear",       uses:["angle","warp","scale"]},
+  {id:"radial", name:"Radial",       uses:["warp","scale"]},
+  {id:"conic",  name:"Conic",        uses:["angle","warp","scale"]},
+  {id:"aurora", name:"Aurora",       uses:["warp","soft","scale"]},
+  {id:"waves",  name:"Waves",        uses:["warp","soft","scale"]},
+  {id:"liquid", name:"Liquid",       uses:["warp","soft","scale"]},
+  {id:"glow",   name:"Glow",         uses:["warp","soft","scale"]},
+  {id:"fluted", name:"Fluted glass", uses:["warp","soft","scale"]},
+  {id:"lava",   name:"Lava",         uses:["angle","warp","soft","scale"]},
+  {id:"spotlight", name:"Spotlight",  uses:["warp","soft","scale"]},
+  {id:"horizon",   name:"Horizon",    uses:["warp","soft","scale"]},
+  {id:"corner",    name:"Corner glow",uses:["warp","soft","scale"]},
+  {id:"beams",     name:"Light beams",uses:["angle","warp","soft","scale"]},
+  {id:"muted",     name:"Muted",      uses:["amount","warp","soft","scale"]},
+];
+const MUTED = 14;
+const SLIDERS = [
+  {key:"angle", label:"Angle", min:0, max:359, step:1, fmt:v => v + "°"},
+  {key:"warp",  label:"Warp",  min:0, max:100, step:1, fmt:v => v},
+  {key:"soft",  label:"Softness", min:0, max:100, step:1, fmt:v => v},
+  {key:"scale", label:"Scale", min:50, max:200, step:1, fmt:v => v + "%"},
+  {key:"amount", label:"Strength", min:0, max:100, step:1, fmt:v => v},
+  {key:"grain", label:"Grain", min:0, max:100, step:1, fmt:v => v},
+];
+// resolution names the short side, so 1080p 4:5 is Instagram's 1080 × 1350
+const RES = { "1080":1080, "2k":1440, "4k":2160 };
+const RATIOS = { "16:9":[16,9], "9:16":[9,16], "4:5":[4,5], "1:1":[1,1] };
+
+function mulberry32(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makePoints(r){
+  const cells = [];
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) cells.push([x, y]);
+  for (let i = cells.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [cells[i], cells[j]] = [cells[j], cells[i]]; }
+  return cells.slice(0, 6).map(([x, y]) => [(x + 0.15 + 0.7 * r()) / 3, (y + 0.15 + 0.7 * r()) / 3]);
+}
+function makeVariant(style, grainy, bold){
+  const r = mulberry32((Math.random() * 4294967296) >>> 0);
+  return {
+    style, label: (bold ? "Bold" : "Calm") + (grainy ? " · grain" : ""),
+    seed: +(r() * 40).toFixed(3), pts: makePoints(r),
+    angle: Math.round(r() * 359),
+    warp: bold ? Math.round(55 + r() * 30) : Math.round(12 + r() * 25),
+    soft: bold ? Math.round(18 + r() * 25) : Math.round(55 + r() * 30),
+    scale: bold ? Math.round(95 + r() * 50) : Math.round(75 + r() * 35),
+    grain: grainy ? Math.round(22 + r() * 16) : 4,
+    amount: bold ? Math.round(50 + r() * 15) : Math.round(30 + r() * 10),
+  };
+}
+const styleSet = i => [makeVariant(i, false, false), makeVariant(i, false, true), makeVariant(i, true, false), makeVariant(i, true, true)];
+function reseed(v){
+  const r = mulberry32((Math.random() * 4294967296) >>> 0);
+  v.seed = +(r() * 40).toFixed(3); v.pts = makePoints(r);
+}
+
+/* ---------- WebGL renderer ---------- */
+const FRAG = `
+precision highp float;
+uniform vec2 uFull, uOff, uAsp;
+uniform vec3 uCol[6];
+uniform vec3 uColL[6];
+uniform vec3 uDark;
+uniform int uN, uStyle;
+uniform float uSeed, uAngle, uWarp, uSoft, uScale, uGrain, uAmount;
+uniform vec2 uPts[6];
+
+vec3 permute(vec3 x){ return mod(((x*34.0)+1.0)*x, 289.0); }
+float snoise(vec2 v){
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+  vec2 i = floor(v + dot(v, C.yy));
+  vec2 x0 = v - i + dot(i, C.xx);
+  vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+  i = mod(i, 289.0);
+  vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+  m = m*m; m = m*m;
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 ox = floor(x + 0.5);
+  vec3 a0 = x - ox;
+  m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+  vec3 g;
+  g.x = a0.x * x0.x + h.x * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g);
+}
+float fbm(vec2 p){
+  float s = 0.0, a = 0.5;
+  for (int i = 0; i < 5; i++){ s += a * snoise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; }
+  return s;
+}
+float sn(vec2 p){ return 0.75 * snoise(p) + 0.25 * snoise(p * 2.1 + 3.7); }
+float fbm3(vec2 p){
+  float s = 0.0, a = 0.5;
+  for (int i = 0; i < 3; i++){ s += a * snoise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; }
+  return s * 1.15;
+}
+float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+
+vec3 ramp(float t){
+  t = clamp(t, 0.0, 1.0) * float(uN - 1);
+  vec3 c = uCol[0];
+  for (int i = 0; i < 5; i++){ if (i >= uN - 1) break; c = mix(c, uCol[i + 1], clamp(t - float(i), 0.0, 1.0)); }
+  return c;
+}
+// colors ordered from the background outward, for light-on-background styles
+vec3 rampL(float t){
+  t = clamp(t, 0.0, 1.0) * float(uN - 1);
+  vec3 c = uColL[0];
+  for (int i = 0; i < 5; i++){ if (i >= uN - 1) break; c = mix(c, uColL[i + 1], clamp(t - float(i), 0.0, 1.0)); }
+  return c;
+}
+vec3 mesh(vec2 q, float warp, float soft){
+  vec2 w = q + warp * 0.4 * vec2(sn(q * 0.9 * uScale + uSeed), sn(q * 0.9 * uScale + uSeed + 11.3));
+  float pw = mix(5.0, 1.6, soft);
+  vec3 acc = vec3(0.0); float tw = 0.0;
+  for (int i = 0; i < 6; i++){
+    if (i >= uN) break;
+    vec2 p = (uPts[i] - 0.5) * uAsp;
+    float wt = 1.0 / (pow(length(w - p), pw) + 1e-4);
+    acc += uCol[i] * wt; tw += wt;
+  }
+  return acc / tw;
+}
+
+void main(){
+  vec2 px = gl_FragCoord.xy + uOff;
+  float mn = min(uFull.x, uFull.y);
+  vec2 q = (px - 0.5 * uFull) / mn;
+  vec3 c;
+
+  if (uStyle == 0){
+    c = mesh(q, uWarp, uSoft);
+  } else if (uStyle == 1){
+    vec2 dir = vec2(cos(uAngle), sin(uAngle));
+    float ext = 0.5 * (abs(dir.x) * uAsp.x + abs(dir.y) * uAsp.y);
+    float t = dot(q, dir) / (2.0 * ext) + 0.5;
+    t += uWarp * 0.22 * sn(q * 0.9 * uScale + uSeed);
+    c = ramp(t);
+  } else if (uStyle == 2){
+    vec2 cen = (uPts[0] - 0.5) * uAsp * 0.8;
+    float r = length(q - cen) / (0.75 * uScale * max(uAsp.x, uAsp.y));
+    r += uWarp * 0.2 * sn(q * 1.1 + uSeed);
+    c = ramp(r);
+  } else if (uStyle == 3){
+    vec2 cen = (uPts[0] - 0.5) * uAsp * 0.6;
+    vec2 d = q - cen;
+    float a = atan(d.y, d.x) + uAngle + uWarp * 0.9 * sn(q * 0.9 * uScale + uSeed);
+    float t = fract(a / 6.2831853);
+    c = ramp(1.0 - abs(2.0 * t - 1.0));
+  } else if (uStyle == 4){
+    float x = q.x * uScale;
+    float h = (uPts[0].y - 0.5) * 0.3;
+    float curve = sn(vec2(x * 0.7, uSeed)) * (0.1 + 0.3 * uWarp);
+    float y = q.y - curve - h;
+    float thick = mix(0.12, 0.45, uSoft);
+    float up = exp(-max(y, 0.0) / thick) ;
+    float edge = smoothstep(-0.03 - thick * 0.25, 0.02, y);
+    float rays = 0.45 + 0.55 * smoothstep(-0.6, 0.6, fbm3(vec2(x * 5.0 + uSeed, y * 0.3)));
+    float I = clamp(up * edge * rays, 0.0, 1.0);
+    float x2 = q.x * uScale * 0.9 + 3.1;
+    float y2 = q.y - sn(vec2(x2 * 0.6, uSeed + 4.0)) * 0.25 - h - 0.22;
+    float I2 = exp(-max(y2, 0.0) / (thick * 0.7)) * smoothstep(-0.05, 0.02, y2) * (0.4 + 0.6 * smoothstep(-0.5, 0.5, fbm3(vec2(x2 * 4.0, y2 * 0.3 + 2.0))));
+    float hueT = clamp(0.5 + 0.7 * sn(vec2(q.x * 0.6 + uSeed * 1.3, 0.3)) + y * 0.9, 0.0, 1.0);
+    vec3 sky = mix(uDark, uDark + vec3(0.06, 0.0, 0.0), clamp(-q.y + 0.5, 0.0, 1.0));
+    c = mix(sky, ramp(hueT), I);
+    c = mix(c, ramp(1.0 - hueT), I2 * 0.55);
+  } else if (uStyle == 5){
+    float t = 0.0, sh = 0.0;
+    float e = mix(0.002, 0.05, uSoft);
+    for (int k = 0; k < 6; k++){
+      float fk = float(k);
+      float b = uAsp.y * (0.5 - (fk + 1.0) / 7.0)
+              + (0.035 + 0.09 * uWarp) * sin(q.x * (2.2 + fk * 0.6) * uScale + uSeed + fk * 1.9)
+              + 0.06 * uWarp * snoise(vec2(q.x * 1.2 * uScale, fk * 3.1 + uSeed));
+      float below = 1.0 - smoothstep(b - e, b + e, q.y);
+      t += below / 6.0;
+      sh += (1.0 - below) * exp(-max(q.y - b, 0.0) * 18.0) * step(0.001, below + 0.001);
+    }
+    c = ramp(t);
+    c.x *= 1.0 - 0.14 * clamp(sh, 0.0, 1.0);
+  } else if (uStyle == 6){
+    vec2 p = q * 0.42 * uScale + uSeed;
+    float k = 0.5 + 1.8 * uWarp;
+    vec2 a = vec2(sn(p), sn(p + vec2(5.2, 1.3)));
+    vec2 b = vec2(sn(p + k * a + vec2(1.7, 9.2)), sn(p + k * a + vec2(8.3, 2.8)));
+    float t = clamp(0.5 + 0.6 * fbm3(p + k * b), 0.0, 1.0);
+    t = mix(smoothstep(0.0, 1.0, smoothstep(0.0, 1.0, t)), t, uSoft);
+    c = ramp(t);
+  } else if (uStyle == 7){
+    c = uDark;
+    vec2 wq = q + uWarp * 0.25 * vec2(sn(q * 1.0 + uSeed), sn(q * 1.0 + uSeed + 7.7));
+    float rad = mix(0.16, 0.5, uSoft) * uScale;
+    for (int i = 0; i < 6; i++){
+      if (i >= uN) break;
+      vec2 p = (uPts[i] - 0.5) * uAsp * 0.9;
+      float d = length(wq - p);
+      c = mix(c, uCol[i], 0.92 * exp(-d * d / (rad * rad)));
+    }
+  } else if (uStyle == 8){
+    float ribs = floor(8.0 + 16.0 * (uScale - 0.5) / 1.5);
+    float u = (q.x / uAsp.x + 0.5) * ribs;
+    float local = fract(u) - 0.5;
+    vec2 sq = vec2(q.x + local * (0.06 + 0.22 * uWarp) * uAsp.x / ribs * 4.0, q.y);
+    c = mesh(sq, 0.35, 0.55);
+    float hard = mix(0.03, 0.2, uSoft);
+    c.x += 0.05 * local;
+    c.x += 0.05 * (1.0 - smoothstep(0.0, hard, 0.5 - abs(local)));
+    c.x -= 0.035 * (1.0 - smoothstep(0.0, hard * 0.6, abs(local + 0.5) )) ;
+  } else if (uStyle == 9){
+    vec2 p = q * uScale;
+    float f = sn(p * 0.7 + uSeed) * (0.3 + 1.2 * uWarp);
+    float t = dot(p, vec2(cos(uAngle), sin(uAngle))) * 1.1 + f;
+    t = fract(t * 0.7);
+    t = 1.0 - abs(2.0 * t - 1.0);
+    t = mix(smoothstep(0.0, 1.0, t), t, uSoft);
+    c = ramp(t);
+  } else if (uStyle == 10){
+    vec2 src = vec2((uPts[0].x - 0.5) * uAsp.x * 0.6, uAsp.y * 0.5 + 0.12);
+    vec2 d = q - src; float dist = length(d);
+    float ang = atan(d.x, -d.y) + uWarp * 0.12 * sn(vec2(atan(d.x, -d.y) * 5.0 + uSeed, dist * 1.2));
+    float w = mix(0.14, 0.5, uSoft) * uScale;
+    float beam = exp(-pow(ang / w, 2.0)) * exp(-dist * 0.7);
+    float pool = exp(-pow((q.x - src.x) / (w * 2.4), 2.0) - pow((q.y + uAsp.y * 0.42) / 0.14, 2.0)) * 0.35;
+    float I = clamp(beam * 1.35 + pool, 0.0, 1.0);
+    c = mix(uDark, rampL(I), smoothstep(0.0, 0.9, I));
+  } else if (uStyle == 11){
+    float R = 1.4 * uScale;
+    vec2 cen = vec2((uPts[0].x - 0.5) * uAsp.x * 0.5, -uAsp.y * 0.5 - R + 0.28 * uAsp.y);
+    float e = length(q - cen) - R + uWarp * 0.03 * sn(vec2(q.x * 2.5 + uSeed, 0.0));
+    float spread = mix(0.06, 0.45, uSoft);
+    float sky = exp(-max(e, 0.0) / spread);
+    vec3 above = mix(uDark, rampL(sky), smoothstep(0.0, 1.0, sky));
+    vec3 below = mix(uDark * vec3(0.7, 1.0, 1.0), rampL(0.55), exp(min(e, 0.0) / (spread * 0.5)) * 0.5);
+    c = e > 0.0 ? above : below;
+    c = mix(c, rampL(1.0), exp(-abs(e) / 0.008) * 0.9);
+  } else if (uStyle == 12){
+    vec2 hc = uAsp * 0.5;
+    vec2 c1 = vec2(uPts[0].x < 0.5 ? -hc.x : hc.x, uPts[0].y < 0.5 ? -hc.y : hc.y);
+    vec2 wq = q + uWarp * 0.2 * vec2(sn(q * 1.1 + uSeed), sn(q * 1.1 + uSeed + 3.3));
+    float r = mix(0.4, 1.0, uSoft) * uScale;
+    float g1 = exp(-pow(length(wq - c1) / r, 2.0));
+    float g2 = exp(-pow(length(wq + c1) / (r * 0.75), 2.0));
+    c = mix(uDark, rampL(0.35 + 0.65 * g1), g1);
+    c = mix(c, rampL(0.3 + 0.5 * g2), g2 * 0.85);
+  } else if (uStyle == 14){
+    // low-contrast haze that stays close to the background, so text in your colors stays readable
+    vec2 wq = q + uWarp * 0.3 * vec2(sn(q * 0.7 + uSeed), sn(q * 0.7 + uSeed + 5.1));
+    float r = mix(0.45, 1.1, uSoft) * uScale;
+    vec3 acc = uDark;
+    for (int i = 0; i < 6; i++){
+      if (i >= uN) break;
+      vec2 p = (uPts[i] - 0.5) * uAsp * 1.1;
+      float d = length(wq - p);
+      acc = mix(acc, uCol[i], 0.85 * exp(-d * d / (r * r)));
+    }
+    acc.yz *= 0.8;
+    c = mix(uDark, acc, uAmount);
+  } else {
+    float ca = cos(uAngle), sa = sin(uAngle);
+    vec2 rq = vec2(ca * q.x + sa * q.y, -sa * q.x + ca * q.y);
+    float x = rq.x + uWarp * 0.15 * sn(rq * 0.8 + uSeed);
+    float band = sn(vec2(x * 2.2 * uScale + uSeed, 0.5));
+    float I = smoothstep(-0.1, mix(0.25, 0.9, uSoft), band);
+    I = clamp(I * (0.55 + 0.45 * sn(vec2(x * 0.6, rq.y * 0.7 + uSeed))), 0.0, 1.0);
+    c = mix(uDark, rampL(I), smoothstep(0.0, 1.0, I));
+  }
+
+  // Oklab -> sRGB
+  float l_ = c.x + 0.3963377774*c.y + 0.2158037573*c.z;
+  float m_ = c.x - 0.1055613458*c.y - 0.0638541728*c.z;
+  float s_ = c.x - 0.0894841775*c.y - 1.2914855480*c.z;
+  float l = l_*l_*l_, m = m_*m_*m_, s = s_*s_*s_;
+  vec3 lin = clamp(vec3(4.0767416621*l - 3.3077115913*m + 0.2309699292*s,
+                       -1.2684380046*l + 2.6097574011*m - 0.3413193965*s,
+                       -0.0041960863*l - 0.7034186147*m + 1.7076147010*s), 0.0, 1.0);
+  vec3 rgb = mix(lin * 12.92, 1.055 * pow(lin, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, lin));
+
+  // film grain (monochrome), then triangular dither so 8-bit export never bands
+  float g = hash12(px + fract(uSeed) * 917.0) - 0.5;
+  rgb += g * uGrain * 0.28 * (0.6 + 0.4 * (1.0 - abs(dot(rgb, vec3(0.33)) - 0.5) * 2.0));
+  rgb += (hash12(px * 1.37 + 0.17) + hash12(px * 0.73 + 4.71) - 1.0) / 255.0;
+  gl_FragColor = vec4(clamp(rgb, 0.0, 1.0), 1.0);
+}`;
+const VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.0); }`;
+
+const glc = document.createElement("canvas");
+const gl = glc.getContext("webgl", {preserveDrawingBuffer:true, antialias:false, premultipliedAlpha:false});
+let U = null;
+function initGL(){
+  if (!gl) return false;
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); return null; } return s; };
+  const vs = sh(gl.VERTEX_SHADER, VERT), fs = sh(gl.FRAGMENT_SHADER, FRAG);
+  if (!vs || !fs) return false;
+  const pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
+  if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(pr)); return false; }
+  gl.useProgram(pr);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  U = {};
+  ["uFull","uOff","uAsp","uCol","uColL","uDark","uN","uStyle","uSeed","uAngle","uWarp","uSoft","uScale","uGrain","uAmount","uPts"].forEach(n => U[n] = gl.getUniformLocation(pr, /^(uCol|uColL|uPts)$/.test(n) ? n + "[0]" : n));
+  return true;
+}
+
+let paletteLab = null, darkLab = null;
+let paletteLabL = null, renderHexes = [];
+function updatePaletteUniformData(){
+  renderHexes = expandPalette(state.colors, state.expand, state.mix);
+  const labs = renderHexes.map(h => rgbToOklab(hexToRgb(h)));
+  paletteLab = new Float32Array(18);
+  labs.forEach((c, i) => paletteLab.set(c, i * 3));
+  if (state.bg >= 0 && state.colors[state.bg]) darkLab = rgbToOklab(hexToRgb(state.colors[state.bg]));
+  else {
+    const d = labs.reduce((a, b) => b[0] < a[0] ? b : a);
+    darkLab = d[0] <= 0.3 ? d : [Math.min(d[0] * 0.4, 0.17), d[1] * 0.55, d[2] * 0.55];
+  }
+  // background first, then colors in order of how far their lightness sits from it
+  const sorted = labs.slice().sort((a, b) => Math.abs(a[0] - darkLab[0]) - Math.abs(b[0] - darkLab[0]));
+  paletteLabL = new Float32Array(18);
+  sorted.forEach((c, i) => paletteLabL.set(c, i * 3));
+}
+
+const NOTES = {
+  off: "Only your own colors are used.",
+  tones: "Adds darker and lighter shades of your colors.",
+  analogous: "Adds nearby hues, for example teal and lime around a green.",
+  vivid: "Adds bolder hues further around the color wheel.",
+};
+// Neighbors / Vivid: grow a family of hues around your colored inputs; grays and near-blacks stay as the background
+function expandPalette(hexes, mode, mix){
+  if (mode === "off" || hexes.length >= 6) return hexes.slice();
+  if (mode === "tones") return enrich(hexes);
+  const lch = hexes.map(hexToOklch);
+  const neutrals = hexes.filter((_, i) => lch[i][1] < 0.025);
+  const acc = hexes.map((hex, i) => ({hex, lch: lch[i]})).filter(o => o.lch[1] >= 0.025);
+  if (!acc.length) return enrich(hexes);
+  const r = mulberry32(mix * 7919 + (mode === "vivid" ? 101 : 0));
+  const spread = mode === "vivid" ? 60 + r() * 50 : 22 + r() * 22;
+  const sign = r() < 0.5 ? -1 : 1;
+  const mk = (L, C, h) => { const hex = oklchToHex(Math.min(0.95, Math.max(0.14, L)), C, ((h % 360) + 360) % 360); return {hex, lch: hexToOklch(hex)}; };
+  const [L, C, h] = acc[0].lch;
+  const cands = [];
+  if (acc[1]){
+    const [L2, C2, h2] = acc[1].lch;
+    cands.push(mk((L + L2) / 2, Math.max(C, C2), h + (((h2 - h + 540) % 360) - 180) / 2));
+  }
+  // dark shades lean toward blue (dark yellows turn muddy); lighter neighbors go either way per mix
+  const dc = ((265 - h + 540) % 360) - 180 >= 0 ? 1 : -1;
+  cands.push(mk(L * 0.5, C * 0.9, h + dc * spread * 0.8));
+  cands.push(mk(L + 0.02, C, h + sign * spread));
+  cands.push(mk(L * 0.72, C, h + dc * spread * 0.35));
+  cands.push(mk(Math.min(L + 0.06, 0.9), C * 0.9, h - sign * spread * 0.6));
+  if (acc[1]) cands.push(mk(acc[1].lch[0] * 0.7, acc[1].lch[1], acc[1].lch[2] + dc * spread * 0.5));
+  const room = Math.max(2, (neutrals.length ? 5 : 6) - neutrals.length);
+  const out = acc.slice(0, room);
+  while (out.length < room && cands.length) out.push(cands.shift());
+  // order outward from the background so ramps run dark-to-bright (or light-to-dark on a light background)
+  const bgL = neutrals.length ? hexToOklch(neutrals[0])[0] : 0;
+  out.sort((a, b) => Math.abs(a.lch[0] - bgL) - Math.abs(b.lch[0] - bgL));
+  return neutrals.concat(out.map(o => o.hex)).slice(0, 6);
+}
+
+// Fill out short palettes: in-between shades (kept vivid, in OKLCH) plus a light highlight
+function enrich(hexes){
+  const n = hexes.length;
+  if (n >= 6) return hexes.slice();
+  const mk = (L, C, h) => { const hex = oklchToHex(L, C, (h + 360) % 360); return {hex, lch: hexToOklch(hex)}; };
+  const lch = hexes.map(hexToOklch), lab = hexes.map(h => rgbToOklab(hexToRgb(h)));
+  const wantHl = n <= 3;
+  const room = 6 - n - (wantHl ? 1 : 0);
+  const pairs = [];
+  for (let i = 0; i < n - 1; i++){
+    const a = lab[i], b = lab[i + 1];
+    pairs.push({i, d: Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])});
+  }
+  const chosen = new Set(pairs.filter(p => p.d > 0.12).sort((x, y) => y.d - x.d).slice(0, room).map(p => p.i));
+  const out = [];
+  hexes.forEach((hex, i) => {
+    out.push({hex, lch: lch[i]});
+    if (!chosen.has(i)) return;
+    const [La, Ca, ha] = lch[i], [Lb, Cb, hb] = lch[i + 1];
+    const h = Ca < 0.03 ? hb : Cb < 0.03 ? ha : ha + (((hb - ha + 540) % 360) - 180) / 2;
+    out.push(mk((La + Lb) / 2, Math.max(Ca, Cb) * 0.85, h));
+  });
+  if (wantHl){
+    let k = 0;
+    out.forEach((o, j) => { if (o.lch[1] > out[k].lch[1]) k = j; });
+    const [L, C, h] = out[k].lch;
+    if (C > 0.03) out.splice(k + 1, 0, mk(Math.min(L + 0.1, 0.93), C * 0.85, h + 10));
+  }
+  return out.map(o => o.hex);
+}
+
+// Draws the part of a W×H image at (rx, ry, rw, rh) into ctx at 0,0, so carousel slides can be rendered one at a time
+function renderSpec(v, W, H, ctx, rx = 0, ry = 0, rw = W, rh = H){
+  const mn = Math.min(W, H);
+  gl.uniform2f(U.uFull, W, H);
+  gl.uniform2f(U.uAsp, W / mn, H / mn);
+  gl.uniform3fv(U.uCol, paletteLab);
+  gl.uniform3fv(U.uColL, paletteLabL);
+  gl.uniform3fv(U.uDark, darkLab);
+  gl.uniform1i(U.uN, renderHexes.length);
+  gl.uniform1i(U.uStyle, v.style);
+  gl.uniform1f(U.uSeed, v.seed);
+  gl.uniform1f(U.uAngle, v.angle * Math.PI / 180);
+  gl.uniform1f(U.uWarp, v.warp / 100);
+  gl.uniform1f(U.uSoft, v.soft / 100);
+  gl.uniform1f(U.uScale, v.scale / 100);
+  gl.uniform1f(U.uGrain, v.grain / 100);
+  gl.uniform1f(U.uAmount, (v.amount ?? 30) / 100 * 0.7);
+  gl.uniform2fv(U.uPts, new Float32Array(v.pts.flat()));
+  const T = 2048;
+  for (let ty = ry; ty < ry + rh; ty += T) for (let tx = rx; tx < rx + rw; tx += T){
+    const tw = Math.min(T, rx + rw - tx), th = Math.min(T, ry + rh - ty);
+    if (glc.width !== tw) glc.width = tw;
+    if (glc.height !== th) glc.height = th;
+    gl.viewport(0, 0, tw, th);
+    gl.uniform2f(U.uOff, tx, H - ty - th);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    ctx.drawImage(glc, 0, 0, tw, th, tx - rx, ty - ry, tw, th);
+  }
+}
+
+/* ---------- state ---------- */
+const store = {
+  get(){ try { return JSON.parse(localStorage.getItem("gradually") || localStorage.getItem("huefield") || "null"); } catch { return null; } },
+  set(o){ try { localStorage.setItem("gradually", JSON.stringify(o)); } catch {} },
+};
+const saved = store.get() || {};
+const state = {
+  colors: Array.isArray(saved.colors) && saved.colors.every(normHex) && saved.colors.length >= 2 ? saved.colors.slice(0, 6) : PRESETS[0].colors.slice(),
+  aspect: RATIOS[saved.aspect] ? saved.aspect : "16:9",
+  res: RES[saved.res] ? saved.res : "4k",
+  slides: Number.isInteger(saved.slides) && saved.slides >= 1 && saved.slides <= 10 ? saved.slides : 1,
+  textColor: typeof saved.textColor === "string" ? saved.textColor : "",
+  type: saved.type === "jpg" ? "jpg" : "png",
+  expand: ["off","tones","analogous","vivid"].includes(saved.expand) ? saved.expand : "analogous",
+  mix: Number.isInteger(saved.mix) ? saved.mix : 1,
+  bg: Number.isInteger(saved.bg) ? saved.bg : -1,
+  variants: [],
+  active: -1,
+};
+if (state.bg >= state.colors.length) state.bg = -1;
+const persist = () => store.set({colors:state.colors, aspect:state.aspect, res:state.res, type:state.type, expand:state.expand, mix:state.mix, bg:state.bg, slides:state.slides, textColor:state.textColor});
+// Plain, CSS-style gradients: no warp, no grain, colors spread evenly edge to edge
+function makeSimple(style, angle, center, scale){
+  const pts = makePoints(mulberry32(1)); pts[0] = center || [0.5, 0.5];
+  return {style, simple:true, seed:0, pts, angle, warp:0, soft:50, scale, grain:0};
+}
+let firstRun = true;
+function simpleSet(){
+  const nice = [0, 45, 90, 135, 180, 225, 270, 315];
+  const pick = () => nice[Math.floor(Math.random() * nice.length)];
+  let a1 = firstRun ? 315 : pick(), a2 = firstRun ? 270 : pick();
+  while (a2 === a1) a2 = pick();
+  const corners = [[0, 1], [1, 1], [0, 0], [1, 0]];
+  const corner = firstRun ? corners[0] : corners[Math.floor(Math.random() * 4)];
+  firstRun = false;
+  const cssDeg = a => (((90 - a) % 360) + 360) % 360;
+  const set = [
+    makeSimple(1, a1, null, 100), makeSimple(1, a2, null, 100),
+    makeSimple(2, 0, [0.5, 0.5], 76), makeSimple(2, 0, corner, 137),
+  ];
+  set[0].label = `Linear · ${cssDeg(a1)}°`; set[1].label = `Linear · ${cssDeg(a2)}°`;
+  set[2].label = "Radial · center"; set[3].label = "Radial · corner";
+  return set;
+}
+function newVariants(){
+  state.variants = simpleSet();
+  STYLES.forEach((_, i) => state.variants.push(...styleSet(i)));
+}
+// Replace one section's variations in place, keeping the others
+function regenGroup(key){
+  const idx = groupsOf().find(g => g.key === key).idx;
+  const fresh = key === "simple" ? simpleSet() : styleSet(key);
+  idx.forEach((vi, j) => { if (fresh[j]) state.variants[vi] = fresh[j]; });
+  idx.forEach(vi => renderSpec(state.variants[vi], cards[vi].cv.width, cards[vi].cv.height, cards[vi].ctx));
+  idx.forEach(vi => { cards[vi].label.textContent = state.variants[vi].label || STYLES[state.variants[vi].style].name; });
+}
+function groupsOf(){
+  const g = [{key:"simple", title:"Simple", idx:[]}].concat(STYLES.map((s, i) => ({key:i, title:i === MUTED ? "Muted · text-friendly" : s.name, idx:[]})));
+  state.variants.forEach((v, i) => (v.simple ? g[0] : g[v.style + 1]).idx.push(i));
+  const muted = g.splice(MUTED + 1, 1)[0];
+  g.splice(1, 0, muted);
+  return g.filter(x => x.idx.length);
+}
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const gridEl = $("grid"), colorList = $("colorList");
+let cards = [];
+
+function buildGrid(){
+  gridEl.innerHTML = "";
+  const ratio = stripRatio();
+  const [tw, th] = ratio >= 1 ? [state.slides > 1 ? 640 : 480, Math.round((state.slides > 1 ? 640 : 480) / ratio)] : [Math.round(480 * ratio), 480];
+  cards = new Array(state.variants.length);
+  groupsOf().forEach(g => {
+    const sec = document.createElement("section");
+    const head = document.createElement("div"); head.className = "sec-head";
+    const h3 = document.createElement("h3"); h3.textContent = g.title;
+    const sb = document.createElement("button"); sb.type = "button"; sb.className = "btn"; sb.textContent = "↻ Shuffle";
+    sb.setAttribute("aria-label", `New ${g.title} variations`);
+    sb.addEventListener("click", () => regenGroup(g.key));
+    head.append(h3, sb);
+    const row = document.createElement("div"); row.className = "cards" + (state.slides > 1 ? " wide" : "");
+    g.idx.forEach(i => {
+      const v = state.variants[i];
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "card";
+      b.setAttribute("aria-label", `Open ${STYLES[v.style].name} variation`);
+      const cv = document.createElement("canvas"); cv.width = tw; cv.height = th;
+      const meta = document.createElement("div"); meta.className = "card-meta";
+      const label = document.createElement("b"); label.textContent = v.label || STYLES[v.style].name;
+      meta.append(label);
+      b.append(cv, meta);
+      b.addEventListener("click", () => openEditor(i));
+      row.append(b);
+      cards[i] = {cv, ctx: cv.getContext("2d"), btn: b, label};
+    });
+    sec.append(head, row);
+    gridEl.append(sec);
+  });
+  $("gridTitle").textContent = `${state.variants.length} variations · ${state.aspect}${state.slides > 1 ? ` · ${state.slides}-slide carousel` : ""}`;
+}
+function renderGrid(){ cards.forEach((c, i) => renderSpec(state.variants[i], c.cv.width, c.cv.height, c.ctx)); }
+
+const preview = $("preview"), pctx = preview.getContext("2d");
+function renderPreview(){
+  if (state.active < 0) return;
+  const ratio = stripRatio();
+  const [w, h] = ratio >= 1 ? [Math.round(Math.min(2000, 900 * ratio)), Math.round(Math.min(2000, 900 * ratio) / ratio)] : [Math.round(1600 * ratio), 1600];
+  if (preview.width !== w) preview.width = w;
+  if (preview.height !== h) preview.height = h;
+  renderSpec(state.variants[state.active], w, h, pctx);
+  scheduleTextCheck();
+  if (state.slides > 1){
+    pctx.save();
+    pctx.strokeStyle = "rgba(255,255,255,.55)"; pctx.lineWidth = 2; pctx.setLineDash([8, 8]);
+    for (let k = 1; k < state.slides; k++){ const x = Math.round(w * k / state.slides) + 0.5; pctx.beginPath(); pctx.moveTo(x, 0); pctx.lineTo(x, h); pctx.stroke(); }
+    pctx.restore();
+  }
+}
+function stripRatio(){ const [a, b] = RATIOS[state.aspect]; return a / b * state.slides; }
+
+/* ---------- text contrast check ---------- */
+const relLum = (r, g, b) => 0.2126 * toLin(r / 255) + 0.7152 * toLin(g / 255) + 0.0722 * toLin(b / 255);
+const sampleCv = document.createElement("canvas"), sampleCtx = sampleCv.getContext("2d", {willReadFrequently:true});
+let tcTimer;
+function scheduleTextCheck(){ clearTimeout(tcTimer); tcTimer = setTimeout(textCheck, 150); }
+function textOptions(){
+  const opts = state.colors.map(h => h.toLowerCase());
+  ["#ffffff", "#000000"].forEach(h => { if (!opts.includes(h)) opts.push(h); });
+  return opts;
+}
+function defaultTextColor(){
+  const cs = state.colors.filter((_, i) => i !== state.bg);
+  return cs.reduce((a, b) => hexToOklch(b)[1] > hexToOklch(a)[1] ? b : a, cs[0] || "#ffffff");
+}
+function syncTextSel(){
+  const sel = $("textSel"), opts = textOptions();
+  if (!opts.includes(state.textColor)) state.textColor = defaultTextColor();
+  sel.innerHTML = opts.map(h => `<option value="${h}">${h.toUpperCase()}${state.colors.includes(h) ? "" : h === "#ffffff" ? " · white" : " · black"}</option>`).join("");
+  sel.value = state.textColor;
+}
+function textCheck(){
+  if (state.active < 0) return;
+  const w = 160, h = Math.max(8, Math.round(160 / stripRatio()));
+  sampleCv.width = w; sampleCv.height = h;
+  sampleCtx.drawImage(preview, 0, 0, w, h);
+  const px = sampleCtx.getImageData(0, 0, w, h).data;
+  const [tr, tg, tb] = hexToRgb(state.textColor).map(v => v * 255);
+  const lt = relLum(tr, tg, tb);
+  const ratios = [];
+  for (let i = 0; i < px.length; i += 4){ const lb = relLum(px[i], px[i + 1], px[i + 2]); ratios.push((Math.max(lt, lb) + 0.05) / (Math.min(lt, lb) + 0.05)); }
+  ratios.sort((a, b) => a - b);
+  const worst = ratios[Math.floor(ratios.length * 0.02)], typical = ratios[Math.floor(ratios.length / 2)];
+  const [cls, verdict] = worst >= 4.5 ? ["ok", "Readable everywhere"] : worst >= 3 ? ["mid", "OK for headings"] : ["low", "Hard to read in places"];
+  $("tcSample").style.setProperty("--tc-fg", state.textColor);
+  $("tcSample").style.setProperty("--tc-bg", `rgb(${px[Math.floor(px.length / 8) & ~3]},${px[(Math.floor(px.length / 8) & ~3) + 1]},${px[(Math.floor(px.length / 8) & ~3) + 2]})`);
+  $("tcResult").innerHTML = `<span>Weakest area <b>${worst.toFixed(1)}:1</b><span class="pill ${cls}">${verdict}</span></span><span>Typical <b>${typical.toFixed(1)}:1</b> · 4.5:1 suits body text, 3:1 large headings</span>${cls === "ok" ? "" : "<span>Lower Strength (Muted) or pick another text color.</span>"}`;
+}
+
+let rafPending = false, needGrid = false;
+function schedule(grid){
+  needGrid = needGrid || grid;
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => {
+    rafPending = false;
+    if (state.active >= 0) renderPreview();
+    if (needGrid && state.active < 0) { renderGrid(); needGrid = false; }
+  });
+}
+
+function setBrand(){
+  $("brandMark").style.setProperty("--brand", `linear-gradient(135deg, ${state.colors.join(", ")})`);
+}
+function paletteChanged(){
+  updatePaletteUniformData(); setBrand(); renderIdeas(); renderStrip(); syncTextSel(); persist();
+  needGrid = true; schedule(true);
+}
+
+function renderColors(){
+  colorList.innerHTML = "";
+  state.colors.forEach((hex, i) => {
+    const li = document.createElement("li"); li.className = "crow";
+    li.innerHTML = `<label class="cchip" style="--c:${hex}"><input type="color" id="cpick${i}" value="${hex}" aria-label="Pick color ${i + 1}"></label>
+      <input class="hex" id="chex${i}" value="${hex.toUpperCase()}" spellcheck="false" maxlength="7" aria-label="Hex code for color ${i + 1}">
+      <button class="bg-btn" type="button" aria-pressed="${state.bg === i}" title="Use as the background color">BG</button>
+      <button class="icon-btn" type="button" aria-label="Remove color ${i + 1}" ${state.colors.length <= 2 ? "disabled" : ""}>×</button>`;
+    li.querySelector(".bg-btn").addEventListener("click", () => { state.bg = state.bg === i ? -1 : i; renderColors(); paletteChanged(); });
+    const chip = li.querySelector(".cchip"), pick = li.querySelector("input[type=color]"), hx = li.querySelector(".hex");
+    pick.addEventListener("input", () => { state.colors[i] = pick.value; chip.style.setProperty("--c", pick.value); hx.value = pick.value.toUpperCase(); hx.removeAttribute("aria-invalid"); paletteChanged(); });
+    hx.addEventListener("input", () => {
+      const n = normHex(hx.value);
+      if (!n) { hx.setAttribute("aria-invalid", "true"); return; }
+      hx.removeAttribute("aria-invalid"); state.colors[i] = n; pick.value = n; chip.style.setProperty("--c", n); paletteChanged();
+    });
+    hx.addEventListener("blur", () => { hx.value = state.colors[i].toUpperCase(); hx.removeAttribute("aria-invalid"); });
+    li.querySelector(".icon-btn").addEventListener("click", () => { if (state.colors.length > 2) { state.colors.splice(i, 1); if (state.bg === i) state.bg = -1; else if (state.bg > i) state.bg--; renderColors(); paletteChanged(); } });
+    colorList.append(li);
+  });
+  $("addColor").disabled = state.colors.length >= 6;
+}
+function setPalette(colors, bg = -1){ state.colors = colors.slice(0, 6); state.bg = bg; renderColors(); paletteChanged(); }
+function renderStrip(){
+  $("expandNote").textContent = NOTES[state.expand];
+  $("remix").hidden = !(state.expand === "analogous" || state.expand === "vivid");
+  const orig = new Set(state.colors);
+  $("renderedStrip").innerHTML = renderHexes.map(h => `<i class="${orig.has(h) ? "" : "added"}" style="--c:${h}" title="${h.toUpperCase()}"></i>`).join("");
+}
+
+function ideaButton(p, container){
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "idea";
+  b.innerHTML = `<i style="--g:linear-gradient(90deg, ${p.colors.join(", ")})"></i><span>${p.name}</span>`;
+  b.title = p.colors.join("  ").toUpperCase();
+  b.addEventListener("click", () => setPalette(p.colors));
+  container.append(b);
+}
+function renderIdeas(){ const el = $("ideas"); el.innerHTML = ""; ideasFrom(state.colors[0]).forEach(p => ideaButton(p, el)); }
+function renderPresets(){ const el = $("presets"); PRESETS.forEach(p => ideaButton(p, el)); }
+
+function segInit(id, key, onChange){
+  const el = $(id);
+  const sync = () => el.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state[key])));
+  el.addEventListener("click", e => { const b = e.target.closest("button"); if (!b || b.dataset.v === state[key]) return; state[key] = b.dataset.v; persist(); syncAllSegs(); onChange && onChange(); });
+  segSyncs.push(sync); sync();
+}
+const segSyncs = [];
+const syncAllSegs = () => segSyncs.forEach(f => f());
+
+function onAspect(){ buildGrid(); updateDims(); if (state.active >= 0) renderPreview(); else renderGrid(); }
+function initSlides(){
+  ["slidesSel", "slidesSel2"].forEach(id => {
+    const sel = $(id);
+    sel.innerHTML = Array.from({length:10}, (_, i) => `<option value="${i + 1}">${i === 0 ? "Off · single image" : (i + 1) + " slides"}</option>`).join("");
+    sel.value = state.slides;
+    sel.addEventListener("change", () => {
+      state.slides = +sel.value; persist();
+      $("slidesSel").value = $("slidesSel2").value = state.slides;
+      onAspect();
+    });
+  });
+}
+$("textSel").addEventListener("change", () => { state.textColor = $("textSel").value; persist(); textCheck(); });
+
+/* ---------- editor ---------- */
+const styleSel = $("styleSel");
+STYLES.forEach((s, i) => { const o = document.createElement("option"); o.value = i; o.textContent = s.name; styleSel.append(o); });
+const sliderEls = {};
+SLIDERS.forEach(s => {
+  const row = document.createElement("div"); row.className = "slider";
+  row.innerHTML = `<label for="sl-${s.key}">${s.label}</label><input type="range" id="sl-${s.key}" min="${s.min}" max="${s.max}" step="${s.step}"><output for="sl-${s.key}"></output>`;
+  const input = row.querySelector("input"), out = row.querySelector("output");
+  input.addEventListener("input", () => {
+    const v = state.variants[state.active]; v[s.key] = +input.value; out.textContent = s.fmt(+input.value);
+    needGrid = true; schedule(false);
+  });
+  sliderEls[s.key] = {row, input, out};
+  $("sliders").append(row);
+});
+function syncEditor(){
+  const v = state.variants[state.active], st = STYLES[v.style];
+  styleSel.value = v.style;
+  SLIDERS.forEach(s => {
+    const e = sliderEls[s.key], val = v[s.key] ?? 30; e.input.value = val; e.out.textContent = s.fmt(val);
+    const used = s.key === "grain" || st.uses.includes(s.key);
+    e.row.classList.toggle("off", !used); e.input.disabled = !used;
+  });
+  updateDims();
+}
+styleSel.addEventListener("change", () => { state.variants[state.active].style = +styleSel.value; syncEditor(); needGrid = true; schedule(false); });
+$("reseed").addEventListener("click", () => { reseed(state.variants[state.active]); needGrid = true; schedule(false); });
+
+function openEditor(i){
+  state.active = i;
+  $("gridView").hidden = true; $("editView").hidden = false;
+  syncEditor(); renderPreview();
+  window.scrollTo({top:0});
+  $("backBtn").focus({preventScroll:true});
+}
+function closeEditor(){
+  const i = state.active;
+  state.active = -1;
+  $("editView").hidden = true; $("gridView").hidden = false;
+  if (needGrid) { renderGrid(); needGrid = false; }
+  if (cards[i]) cards[i].btn.focus({preventScroll:false});
+}
+$("backBtn").addEventListener("click", closeEditor);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && state.active >= 0 && !/^(INPUT|SELECT)$/.test(document.activeElement.tagName)) closeEditor(); });
+
+function exportDims(){
+  const [a, b] = RATIOS[state.aspect], s = RES[state.res];
+  return a >= b ? [Math.round(s * a / b), s] : [s, Math.round(s * b / a)];
+}
+function updateDims(){
+  const [w, h] = exportDims();
+  const n = state.slides;
+  $("exportBtn").textContent = n > 1 ? `Export ${n} slides · ${w} × ${h} each` : `Export ${state.type.toUpperCase()} · ${w} × ${h}`;
+  const quality = state.type === "png" ? "PNG, lossless and dithered to prevent banding." : "JPG at 95% quality, much smaller files.";
+  $("dimsNote").textContent = n > 1
+    ? `${quality} The gradient flows across all ${n} slides, so they line up when swiped. Saved as one .zip with slide-01 to slide-${String(n).padStart(2, "0")}.`
+    : `${quality}${state.res === "4k" && state.type === "png" ? " Large file, often 15–30 MB with grain." : ""}${state.aspect === "4:5" && state.res !== "1080" ? " Instagram displays 4:5 posts at 1080 × 1350." : ""}`;
+}
+
+/* ---------- zip (stored, no compression: PNG/JPG are already compressed) ---------- */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++){ let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8){ let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_T[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zipStore(files){
+  const enc = new TextEncoder(), parts = [], central = [];
+  let offset = 0;
+  for (const f of files){
+    const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(12, 0x21, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, size, true); lh.setUint32(22, size, true); lh.setUint16(26, name.length, true);
+    parts.push(lh.buffer, name, f.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(14, 0x21, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, size, true); ch.setUint32(24, size, true); ch.setUint16(28, name.length, true);
+    ch.setUint32(42, offset, true);
+    central.push(ch.buffer, name);
+    offset += 30 + name.length + size;
+  }
+  const cdSize = central.reduce((s, p) => s + p.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end.buffer], {type:"application/zip"});
+}
+
+/* ---------- export ---------- */
+let dlPromise = null;
+function getDownloads(){
+  if (!dlPromise) dlPromise = (window.claude && typeof window.claude.use === "function")
+    ? Promise.resolve(window.claude.use("downloads")).catch(() => null)
+    : Promise.resolve(null);
+  return dlPromise;
+}
+setTimeout(getDownloads, 0);
+
+const toastEl = $("toast"); let toastT;
+function toast(msg){ toastEl.textContent = msg; toastEl.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove("show"), 3200); }
+
+$("exportBtn").addEventListener("click", async () => {
+  const btn = $("exportBtn"), v = state.variants[state.active];
+  const [W, H] = exportDims(), n = state.slides;
+  btn.disabled = true; btn.textContent = n > 1 ? `Rendering ${n} slides…` : `Rendering ${W} × ${H}…`;
+  await new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));
+  const offer = async (name, blob) => {
+    const dl = await getDownloads();
+    if (dl) { await dl.save({filename:name, data:blob}); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
+  try {
+    const mime = state.type === "png" ? "image/png" : "image/jpeg";
+    const base = `gradually-${STYLES[v.style].id}-${state.aspect.replace(":", "x")}`;
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+    const slides = [];
+    for (let k = 0; k < n; k++){
+      renderSpec(v, W * n, H, ctx, W * k, 0, W, H);
+      const blob = await new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error("encode")), mime, 0.95));
+      slides.push({name: n > 1 ? `slide-${String(k + 1).padStart(2, "0")}.${state.type}` : `${base}-${W}x${H}.${state.type}`, blob});
+    }
+    try {
+      if (n === 1) { await offer(slides[0].name, slides[0].blob); toast(`Saved ${slides[0].name}`); }
+      else {
+        btn.textContent = "Packing slides…";
+        const files = await Promise.all(slides.map(async s => ({name: s.name, data: new Uint8Array(await s.blob.arrayBuffer())})));
+        const zipName = `${base}-carousel-${n}-slides.zip`;
+        try { await offer(zipName, zipStore(files)); toast(`Saved ${zipName}`); }
+        catch (e) {
+          if (!e || (e.code !== "rejected_extension" && e.code !== "extension_not_enabled")) throw e;
+          for (const s of slides) await offer(`${base}-${s.name}`, s.blob);
+          toast(`Saved ${n} slides`);
+        }
+      }
+    } catch (e) { toast(e && e.code === "declined" ? "Export cancelled" : "Couldn't save the file here. Try again in a moment."); }
+  } catch (e) {
+    console.error(e); toast("Export failed. Try a lower resolution.");
+  } finally { btn.disabled = false; updateDims(); }
+});
+
+/* ---------- wiring ---------- */
+$("addColor").addEventListener("click", () => {
+  if (state.colors.length >= 6) return;
+  const [L, C, h] = hexToOklch(state.colors[state.colors.length - 1]);
+  state.colors.push(oklchToHex(Math.min(0.92, Math.max(0.25, L + (L > 0.6 ? -0.25 : 0.25))), Math.max(C, 0.08), (h + 40) % 360));
+  renderColors(); paletteChanged();
+});
+$("reverseColors").addEventListener("click", () => setPalette(state.colors.slice().reverse(), state.bg < 0 ? -1 : state.colors.length - 1 - state.bg));
+$("remix").addEventListener("click", () => { state.mix++; paletteChanged(); });
+$("randomPalette").addEventListener("click", () => {
+  const base = oklchToHex(0.55 + Math.random() * 0.25, 0.12 + Math.random() * 0.1, Math.random() * 360);
+  const opts = ideasFrom(base).filter(p => p.name !== "Pastel" || Math.random() < 0.4);
+  setPalette(opts[Math.floor(Math.random() * opts.length)].colors);
+});
+$("shuffleAll").addEventListener("click", () => {
+  newVariants();
+  if (state.active >= 0) { closeEditor(); }
+  buildGrid(); renderGrid();
+});
+
+if (!initGL()) {
+  $("grid").innerHTML = '<div class="err">This browser could not start WebGL, which Gradually needs to render gradients. Try a recent Chrome, Safari, Edge or Firefox.</div>';
+  return;
+}
+segInit("aspectSeg", "aspect", onAspect);
+segInit("aspectSeg2", "aspect", onAspect);
+segInit("resSeg", "res", updateDims);
+segInit("typeSeg", "type", updateDims);
+segInit("expandSeg", "expand", paletteChanged);
+initSlides(); syncTextSel();
+newVariants();
+updatePaletteUniformData(); setBrand();
+renderColors(); renderStrip(); renderIdeas(); renderPresets();
+buildGrid(); renderGrid();
+})();
+</script>

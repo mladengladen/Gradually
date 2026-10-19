@@ -54,7 +54,7 @@ The fonts (Bricolage Grotesque, Instrument Sans and JetBrains Mono) load from Go
 
 1. Push the repository to GitHub.
 2. Go to **Settings → Pages** and choose to deploy from your default branch.
-3. The app is then served at `https://<username>.github.io/<repo>/gradually.html`. Rename the file to `index.html` if you want it at the repository's root URL.
+3. The app is then served at `https://mladengladen.github.io/gradually/gradually.html`.
 
 ## How it works
 
